@@ -97,7 +97,7 @@ def run_on_gpu(rank, world_size, args):
     model, processor = load_vlm_model(
         model_name=args.model_name,
         device_map={"": rank},
-        dtype=torch.float32,
+        dtype=torch.bfloat16,
     )
 
     iter_fn = DATASET_ITERS[args.dataset]
