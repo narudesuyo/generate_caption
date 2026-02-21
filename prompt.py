@@ -62,22 +62,71 @@ def make_hand_only_prompt(is_right: bool = True):
     """Prompt for hand-only images (no object bbox). Asks whether the hand is interacting with an object."""
     which_hand = "A right hand" if is_right else "A left hand"
 
-    return f"""You are an assistant for describing hand poses in images.
-The image shows a hand with no bounding box annotations. Describe the hand based on visual cues.
+    header = """You are an assistant for describing hand poses in images. The image shows a hand with no bounding box annotations. Describe the hand based on visual cues."""
 
-Write your answers in the following format. Each value should be brief (1-2 sentences).
+    instruction = f"""
+Instructions:
+1. First determine whether the hand is interacting with an object.
+2. If the hand is interacting with an object, describe the object and interaction in detail.
+3. If not, write "none" for object-related fields.
 
-1. hand_caption: A concise description of what the hand is doing. Start with "{which_hand}". Use present tense. Max 25 words.
-2. has_object_interaction: Is the hand interacting with an object? Answer "yes" or "no".
-3. object_category: If yes, the object category (single noun). If no, write "none".
-4. object_shape: If yes, the object's geometric shape ("cuboid", "cylindrical", "spherical", "flatRectangular", "irregular", or "unknown"). If no, write "none".
-5. object_size: If yes, the object's size relative to the hand ("tiny", "small", "medium", "large", "huge", or "unknown"). If no, write "none".
-6. interaction_type: If yes, describe the interaction (e.g., grabbing, holding). If no, write "none".
-7. intention: The inferred high-level goal. Start with "to". Max 10 words. If unclear, write "undetermined".
-8. grasp_taxonomy: If the hand is grasping an object, choose one from: {taxonomy_less}. If not grasping, write "none".
-9. hand_pose_description: Describe the hand's orientation, finger shape, and contact points. Max 20 words.
+Write your answers in the following format:
 
-Do not use JSON, curly brackets, or quotation marks. Only use the format above."""
+1. hand_caption: ...
+2. has_object_interaction: ...
+3. object_category: ...
+4. object_shape: ...
+5. object_size: ...
+6. interaction_type: ...
+7. intention: ...
+8. grasp_taxonomy: ...
+9. hand_pose_description: ...
+
+Do not use JSON, curly brackets, or quotation marks. Only use the format above.
+"""
+
+    keys = f"""
+Output Keys and Descriptions:
+
+1. hand_caption
+• What to include: A concise description of the primary action the hand is performing.
+• Write in the form: {which_hand} [does something]. Use present tense and active voice. Limit to ≤ 25 words.
+
+2. has_object_interaction
+• Is the hand interacting with an object? Answer "yes" or "no".
+
+3. object_category
+• What to include: The semantic category of the object the hand is interacting with.
+• Format: Use a single noun (singular). If the object cannot be identified, use "unknown".
+
+4. object_shape
+• Describe the geometric shape in simple words like "boxy", "spherical", "flat", or others.
+• Prefer short phrases. If unclear, use "unknown".
+
+5. object_size
+• What to include: The object's size relative to the size of the hand. Use: "tiny", "small", "medium", "large", "huge", or "unknown".
+
+6. interaction_type
+• What to include: Describe the type of interaction the hand is performing with the object in a concise verb phrase.
+• Focus on the action itself (e.g., grabbing, tapping, twisting).
+• You may use your own wording. If uncertain, use "unknown".
+
+Examples: "grabbing", "tapping", "pushing", "supporting", "pointing", "twisting", "pressing a button", "using as a tool", "resting on", "unknown"
+
+7. intention
+• What to include: The inferred high-level goal of the hand. Start with "to". Use ≤ 10 words. If unclear, write "undetermined".
+
+8. grasp_taxonomy
+• What to include: The grasp type according to a predefined taxonomy.
+• Format: Choose one from the following list exactly as written: {taxonomy_less}
+
+9. hand_pose_description
+• What to include: Describe the hand's orientation, finger shape, and contact points. Use ≤ 20 words.
+• If any aspect is unclear from the image, you may omit it.
+
+Note: For fields 3-8, if has_object_interaction is "no", write "none".
+"""
+    return f"{header}\n{instruction.strip()}\n{keys.strip()}"
 
 
 def make_hoi_prompt_compact(hand_bbox=None, object_bbox=None, is_right=True):
