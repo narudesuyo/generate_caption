@@ -45,7 +45,7 @@ Do not use JSON, curly brackets, or quotation marks. Only use the format above.
     keys = f"""
 Output Keys and Descriptions:
 
-{hand_caption(which_hand, ver=2)}
+{hand_caption(which_hand, ver=1)}
 {object_category()}
 {object_shape(ver=2)}
 {object_size()}
@@ -55,3 +55,34 @@ Output Keys and Descriptions:
 {hand_pose_description(ver=1)}
 """
     return f"{header}\n{instruction.strip()}\n{keys.strip()}"
+
+def make_hoi_prompt_compact(hand_bbox=None, object_bbox=None, is_right=True):
+    def fmt_bbox(name, bbox):
+        return f"{name} bbox: {bbox}" if bbox else f"{name} bbox: none"
+
+    which_hand = "right" if is_right else "left"
+    hand = fmt_bbox("Hand", hand_bbox)
+    obj = fmt_bbox("Object", object_bbox)
+
+    prompt = f"""
+You are an assistant that outputs a single short English phrase describing a hand-object interaction.
+
+Use ONLY this format:
+The {which_hand} hand [verb phrase] [object phrase]
+
+Rules:
+- Use a concise verb phrase (e.g., holding, touching, grasping, pointing).
+- Use a concise noun phrase for the object (e.g., a cup, a smartphone).
+- If no object is visible, use "nothing".
+- Output exactly one short line, no punctuation, no explanations.
+- Do NOT use parentheses, colons, or quotation marks.
+
+Context:
+- {hand}
+- {obj}
+
+Now produce the output line starting with "The {which_hand} hand".
+""".strip()
+
+    return prompt
+

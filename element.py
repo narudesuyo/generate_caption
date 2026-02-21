@@ -3,7 +3,7 @@ def hand_caption(which_hand, ver=1):
     if ver == 1:
         return f"""1. hand_caption
 • What to include: A concise description of the primary action the hand is performing.
-• Write in the form: {which_hand} [does something]. Use present tense and active voice. Limit to ≤ 20 words.
+• Write in the form: {which_hand} [does something]. Use present tense and active voice. Limit to ≤ 25 words.
 """
     elif ver == 2:
         return f"""1. hand_caption

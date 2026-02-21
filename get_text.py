@@ -35,18 +35,18 @@ def run_on_gpu(rank, world_size):
 
     # データセットの構築
     dataset = HOGDataset(
-        setup='s3',
+        setup='s1',
         split='train',
-        db_path='/data1/narus/HOGraspNet/data',
+        db_path='/data2/narus/HOGraspNet/data_selected',
         load_pkl=False,
         use_aug=False,
     )
-
-    for i in tqdm(range(rank, len(dataset), world_size), desc=f"GPU {rank}"):
+    start_idx = 0
+    for i in reversed(tqdm(range(start_idx + rank, len(dataset), world_size), desc=f"GPU {rank}")):
         data = dataset[i]
         image_path = data['rgb_path']
-        bbox_path = data['bbox_path']
-        bbox_data = pickle.load(open(bbox_path, 'rb'))
+       # bbox_path = data['bbox_path']
+       # bbox_data = pickle.load(open(bbox_path, 'rb'))
         mano_side = data['mano_side']
         bbox_hand = data['bbox_hand']
         bbox_obj = expand_bbox(data['bbox_obj'])
@@ -58,7 +58,7 @@ def run_on_gpu(rank, world_size):
         s, t, c, f = data['subject'], data['trial'], data['camera'], data['frame']
 
         save_txt_path = os.path.join(
-            "/data1/narus/HOGraspNet/data/text/", s, t, c, f"{c}_{f}.txt"
+            "/data2/narus/data_selected/text_dummy/", s, t, c, f"{c}_{f}.txt"
         )
 
         os.makedirs(os.path.dirname(save_txt_path), exist_ok=True)
@@ -73,6 +73,7 @@ def run_on_gpu(rank, world_size):
             output_path=save_txt_path,
             max_new_tokens=150,
             temperature=1,
+            compact=False
         )
 
         if i == rank:
