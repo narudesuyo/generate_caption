@@ -72,15 +72,17 @@ def iter_freihand(data_root, **kwargs):
     """Yield (image_path, hand_bbox, object_bbox, is_right, save_path) for FreiHAND.
 
     Uses augmented images only (indices 32560-130239).
+    data_root should be $DATA_ROOT (parent of FreiHAND/).
     """
-    rgb_dir = os.path.join(data_root, "training", "rgb")
+    freihand_dir = os.path.join(data_root, "FreiHAND", "train", "training")
+    rgb_dir = os.path.join(freihand_dir, "rgb")
     n_original = 32560
     n_total = 130240
     for idx in range(n_original, n_total):
         image_path = os.path.join(rgb_dir, f"{idx:08d}.jpg")
         if not os.path.exists(image_path):
             continue
-        save_path = os.path.join(data_root, "training", "caption", f"{idx:08d}.txt")
+        save_path = os.path.join(freihand_dir, "caption", f"{idx:08d}.txt")
         yield image_path, None, None, True, save_path
 
 
@@ -126,7 +128,8 @@ def run_on_gpu(rank, world_size, args):
 def main():
     parser = argparse.ArgumentParser(description="Generate HOI captions using VLM")
     parser.add_argument("--dataset", required=True, choices=list(DATASET_ITERS.keys()))
-    parser.add_argument("--data-root", required=True, help="Root directory for the dataset")
+    parser.add_argument("--data-root", default=os.environ.get("DATA_ROOT", ""),
+                        help="Root directory for the dataset (default: $DATA_ROOT)")
     parser.add_argument("--setup", default="s1", help="Dataset setup (default: s1)")
     parser.add_argument("--split", default="train", help="Dataset split (default: train)")
     parser.add_argument("--model-name", default="Qwen/Qwen2.5-VL-7B-Instruct")
