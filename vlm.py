@@ -5,7 +5,7 @@ import torch
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 
 from qwen_vl_utils import process_vision_info
-from .prompt import make_hoi_prompt, make_hoi_prompt_compact
+from .prompt import make_hoi_prompt, make_hoi_prompt_compact, make_hand_only_prompt
 
 DEFAULT_VLM_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
 
@@ -20,31 +20,35 @@ def load_vlm_model(model_name=DEFAULT_VLM_MODEL, device_map="auto", dtype=torch.
 
 
 def process_image_with_bbox(image_path: str,
-                            hand_bbox: tuple,
-                            object_bbox: tuple,
-                            is_right: bool,
+                            hand_bbox: tuple = None,
+                            object_bbox: tuple = None,
+                            is_right: bool = True,
                             model=None,
                             processor=None,
                             output_path: str = None,
                             max_new_tokens: int = 200,
                             temperature: float = 0.7,
-                            compact=False
+                            compact=False,
+                            prompt_type="hoi",
                             ):
     """
     Args:
         image_path: Path to input image
-        hand_bbox: (x1, y1, x2, y2)
-        object_bbox: (x1, y1, x2, y2)
+        hand_bbox: (x1, y1, x2, y2) or None
+        object_bbox: (x1, y1, x2, y2) or None
         model: Qwen2.5-VL model (optional; will load if None)
         processor: Qwen2.5-VL processor (optional; will load if None)
         output_path: Optional output file path to save result
+        prompt_type: "hoi" (default), "compact", or "hand_only"
     Returns:
         output_text: Generated text from the model
     """
     if model is None or processor is None:
         model, processor = load_vlm_model()
 
-    if compact:
+    if prompt_type == "hand_only":
+        prompt = make_hand_only_prompt(is_right)
+    elif compact or prompt_type == "compact":
         prompt = make_hoi_prompt_compact(hand_bbox, object_bbox, is_right)
     else:
         prompt = make_hoi_prompt(hand_bbox, object_bbox, is_right)

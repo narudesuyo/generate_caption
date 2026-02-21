@@ -1,1 +1,3 @@
 *.out
+/.conda
+__pycache__/

@@ -58,6 +58,25 @@ Output Keys and Descriptions:
 """
     return f"{header}\n{instruction.strip()}\n{keys.strip()}"
 
+def make_hand_only_prompt(is_right: bool = True):
+    """Prompt for hand-only images (no object bbox). Asks whether the hand is interacting with an object."""
+    which_hand = "A right hand" if is_right else "A left hand"
+
+    return f"""You are an assistant for describing hand poses in images.
+The image shows a hand with no bounding box annotations. Describe the hand based on visual cues.
+
+Write your answers in the following format. Each value should be brief (1-2 sentences).
+
+1. hand_caption: A concise description of what the hand is doing. Start with "{which_hand}". Use present tense. Max 25 words.
+2. has_object_interaction: Is the hand interacting with an object? Answer "yes" or "no".
+3. object_category: If yes, the object category (single noun). If no, write "none".
+4. interaction_type: If yes, describe the interaction (e.g., grabbing, holding). If no, write "none".
+5. intention: The inferred high-level goal. Start with "to". Max 10 words. If unclear, write "undetermined".
+6. hand_pose_description: Describe the hand's orientation, finger shape, and contact points. Max 20 words.
+
+Do not use JSON, curly brackets, or quotation marks. Only use the format above."""
+
+
 def make_hoi_prompt_compact(hand_bbox=None, object_bbox=None, is_right=True):
     def fmt_bbox(name, bbox):
         return f"{name} bbox: {bbox}" if bbox else f"{name} bbox: none"

@@ -68,10 +68,27 @@ def iter_dexycb(data_root, setup='s1', split='test', **kwargs):
               data['mano_side'] == 'right', save_path
 
 
+def iter_freihand(data_root, **kwargs):
+    """Yield (image_path, hand_bbox, object_bbox, is_right, save_path) for FreiHAND.
+
+    Uses augmented images only (indices 32560-130239).
+    """
+    rgb_dir = os.path.join(data_root, "training", "rgb")
+    n_original = 32560
+    n_total = 130240
+    for idx in range(n_original, n_total):
+        image_path = os.path.join(rgb_dir, f"{idx:08d}.jpg")
+        if not os.path.exists(image_path):
+            continue
+        save_path = os.path.join(data_root, "training", "caption", f"{idx:08d}.txt")
+        yield image_path, None, None, True, save_path
+
+
 DATASET_ITERS = {
     'hograspnet': iter_hograspnet,
     'ho3d': iter_ho3d,
     'dexycb': iter_dexycb,
+    'freihand': iter_freihand,
 }
 
 
@@ -102,6 +119,7 @@ def run_on_gpu(rank, world_size, args):
             max_new_tokens=args.max_new_tokens,
             temperature=args.temperature,
             compact=args.compact,
+            prompt_type=args.prompt_type,
         )
 
 
@@ -115,6 +133,8 @@ def main():
     parser.add_argument("--max-new-tokens", type=int, default=150)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--compact", action="store_true", help="Use compact prompt")
+    parser.add_argument("--prompt-type", default="hoi", choices=["hoi", "compact", "hand_only"],
+                        help="Prompt type: hoi (default), compact, or hand_only (no bbox)")
     parser.add_argument("--skip-existing", action="store_true", help="Skip if output file exists")
     args = parser.parse_args()
 
