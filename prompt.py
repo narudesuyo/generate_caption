@@ -70,9 +70,12 @@ Write your answers in the following format. Each value should be brief (1-2 sent
 1. hand_caption: A concise description of what the hand is doing. Start with "{which_hand}". Use present tense. Max 25 words.
 2. has_object_interaction: Is the hand interacting with an object? Answer "yes" or "no".
 3. object_category: If yes, the object category (single noun). If no, write "none".
-4. interaction_type: If yes, describe the interaction (e.g., grabbing, holding). If no, write "none".
-5. intention: The inferred high-level goal. Start with "to". Max 10 words. If unclear, write "undetermined".
-6. hand_pose_description: Describe the hand's orientation, finger shape, and contact points. Max 20 words.
+4. object_shape: If yes, the object's geometric shape ("cuboid", "cylindrical", "spherical", "flatRectangular", "irregular", or "unknown"). If no, write "none".
+5. object_size: If yes, the object's size relative to the hand ("tiny", "small", "medium", "large", "huge", or "unknown"). If no, write "none".
+6. interaction_type: If yes, describe the interaction (e.g., grabbing, holding). If no, write "none".
+7. intention: The inferred high-level goal. Start with "to". Max 10 words. If unclear, write "undetermined".
+8. grasp_taxonomy: If the hand is grasping an object, choose one from: {taxonomy_less}. If not grasping, write "none".
+9. hand_pose_description: Describe the hand's orientation, finger shape, and contact points. Max 20 words.
 
 Do not use JSON, curly brackets, or quotation marks. Only use the format above."""
 

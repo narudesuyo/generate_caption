@@ -31,14 +31,42 @@ Qwen2.5-VL を使い、画像から以下の8項目を生成:
 8. `hand_pose_description` — 手の姿勢記述
 
 ```bash
+# HOGraspNet
 python -m generate_caption caption \
   --dataset hograspnet \
   --data-root /large/naru/data_selected \
   --setup s1 --split train \
   --skip-existing
+
+# HO3D
+python -m generate_caption caption \
+  --dataset ho3d \
+  --data-root /large/naru/HO3D/train \
+  --skip-existing
+
+# DexYCB
+python -m generate_caption caption \
+  --dataset dexycb \
+  --data-root /large/naru/DEX_YCB \
+  --setup s1 --split test \
+  --skip-existing
+
+# FreiHAND (hand-only prompt, no bbox)
+python -m generate_caption caption \
+  --dataset freihand \
+  --data-root /large/naru/FreiHAND \
+  --prompt-type hand_only \
+  --skip-existing
 ```
 
-対応データセット: `hograspnet`, `ho3d`, `dexycb`
+対応データセット: `hograspnet`, `ho3d`, `dexycb`, `freihand`
+
+| データセット | bbox | prompt-type | 備考 |
+|-------------|------|-------------|------|
+| hograspnet | hand + object | hoi (default) | setup/split 指定可 |
+| ho3d | hand + object | hoi (default) | 全 rgb/*.png を走査 |
+| dexycb | hand + object | hoi (default) | setup/split 指定可 |
+| freihand | なし | hand_only | augmentation画像のみ (32560-130239) |
 
 ### Step 2: Grasp Taxonomy 分類 → キャプション更新
 
