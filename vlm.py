@@ -1,23 +1,22 @@
 import os
-from PIL import Image, ImageDraw
+from PIL import Image
 
 import torch
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 
 from qwen_vl_utils import process_vision_info
-from prompt import make_hoi_prompt, make_hoi_prompt_compact
+from .prompt import make_hoi_prompt, make_hoi_prompt_compact
+
+DEFAULT_VLM_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
 
 
-def draw_bboxes(image: Image.Image, hand_bbox: tuple, object_bbox: tuple) -> Image.Image:
-    """
-    hand_bbox/object_bbox: (x1, y1, x2, sy2) in pixel coordinates
-    """
-    draw = ImageDraw.Draw(image)
-    draw.rectangle(hand_bbox, outline="red", width=4)
-    draw.text((hand_bbox[0], hand_bbox[1] - 10), "hand", fill="red")
-    draw.rectangle(object_bbox, outline="blue", width=4)
-    draw.text((object_bbox[0], object_bbox[1] - 10), "object", fill="blue")
-    return image
+def load_vlm_model(model_name=DEFAULT_VLM_MODEL, device_map="auto", dtype=torch.bfloat16):
+    """Load Qwen2.5-VL model and processor."""
+    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+        model_name, torch_dtype=dtype, device_map=device_map
+    ).eval()
+    processor = AutoProcessor.from_pretrained(model_name)
+    return model, processor
 
 
 def process_image_with_bbox(image_path: str,
@@ -43,18 +42,13 @@ def process_image_with_bbox(image_path: str,
         output_text: Generated text from the model
     """
     if model is None or processor is None:
-        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-7B-Instruct",
-            torch_dtype=torch.bfloat16,
-            device_map="auto"
-        ).eval()
-        processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct")
+        model, processor = load_vlm_model()
+
     if compact:
         prompt = make_hoi_prompt_compact(hand_bbox, object_bbox, is_right)
     else:
         prompt = make_hoi_prompt(hand_bbox, object_bbox, is_right)
     base_image = Image.open(image_path).convert("RGB")
-    # annotated_image = draw_bboxes(base_image.copy(), hand_bbox, object_bbox)
 
     messages = [
         {

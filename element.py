@@ -1,4 +1,4 @@
-from taxonomy import taxonomy_less, taxonomy
+from .taxonomy import taxonomy_less, taxonomy
 def hand_caption(which_hand, ver=1):
     if ver == 1:
         return f"""1. hand_caption
