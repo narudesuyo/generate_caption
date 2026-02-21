@@ -141,6 +141,14 @@ def main():
     parser.add_argument("--skip-existing", action="store_true", help="Skip if output file exists")
     args = parser.parse_args()
 
+    iter_fn = DATASET_ITERS[args.dataset]
+    samples = list(iter_fn(args.data_root, setup=args.setup, split=args.split))
+    print(f"Data root: {args.data_root}")
+    print(f"Dataset: {args.dataset}, Total samples: {len(samples)}")
+    if samples:
+        print(f"First image: {samples[0][0]}")
+        print(f"First save:  {samples[0][4]}")
+
     world_size = torch.cuda.device_count()
     print(f"Using {world_size} GPUs for inference")
     mp.spawn(run_on_gpu, args=(world_size, args), nprocs=world_size)
