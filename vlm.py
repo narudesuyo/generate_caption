@@ -5,17 +5,26 @@ import torch
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 
 from qwen_vl_utils import process_vision_info
-from .prompt import make_hoi_prompt, make_hoi_prompt_compact, make_hand_only_prompt
+from prompt import make_hoi_prompt, make_hoi_prompt_compact, make_hand_only_prompt
 
 DEFAULT_VLM_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
 
 
-def load_vlm_model(model_name=DEFAULT_VLM_MODEL, device_map="auto", dtype=torch.bfloat16):
+def load_vlm_model(model_name=DEFAULT_VLM_MODEL, device_map="auto", dtype=None):
     """Load Qwen2.5-VL model and processor."""
+    if dtype is None:
+        if torch.cuda.is_available():
+            major, _ = torch.cuda.get_device_capability()
+            # Prefer bf16 on Ampere+; use fp16 on older GPUs (e.g., V100).
+            dtype = torch.bfloat16 if major >= 8 else torch.float16
+        else:
+            dtype = torch.float32
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         model_name, torch_dtype=dtype, device_map=device_map
     ).eval()
-    processor = AutoProcessor.from_pretrained(model_name)
+    processor = AutoProcessor.from_pretrained(
+        model_name, min_pixels=256 * 28 * 28, max_pixels=1280 * 28 * 28
+    )
     return model, processor
 
 
@@ -86,7 +95,7 @@ def process_image_with_bbox(image_path: str,
 
     if output_path:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, "w") as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(output_text)
 
     return output_text, prompt

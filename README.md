@@ -43,27 +43,27 @@ Qwen2.5-VL を使い、画像から以下の8項目を生成:
 
 ```bash
 # HOGraspNet
-python -m generate_caption caption \
+python thirdparty/generate_caption/generate_caption.py \
   --dataset hograspnet \
   --data-root $DATA_ROOT \
   --setup s1 --split train \
   --skip-existing
 
 # HO3D
-python -m generate_caption caption \
+python thirdparty/generate_caption/generate_caption.py \
   --dataset ho3d \
   --data-root /path/to/HO3D/train \
   --skip-existing
 
 # DexYCB
-python -m generate_caption caption \
+python thirdparty/generate_caption/generate_caption.py \
   --dataset dexycb \
   --data-root $DATA_ROOT \
   --setup s1 --split test \
   --skip-existing
 
 # FreiHAND (hand-only, bbox なし)
-python -m generate_caption caption \
+python thirdparty/generate_caption/generate_caption.py \
   --dataset freihand \
   --data-root $DATA_ROOT \
   --prompt-type hand_only \
@@ -114,7 +114,7 @@ python pred_caption.py
 Mistral-7B で構造化キャプションを1文に要約する。
 
 ```bash
-python -m generate_caption summarize \
+python thirdparty/generate_caption/summarize.py \
   --caption-root /path/to/captions \
   --caption-subdir pred_taxonomy_caption \
   --summary-subdir summary \

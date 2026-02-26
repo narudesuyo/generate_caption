@@ -1,6 +1,6 @@
-from .taxonomy import taxonomy_less
-from .element import (hand_caption, object_category, object_shape, object_size,
-                      interaction_type, intention, grasp_taxonomy, hand_pose_description)
+from taxonomy import taxonomy_less
+from element import (hand_caption, object_category, object_shape, object_size,
+                     interaction_type, intention, grasp_taxonomy, hand_pose_description)
 
 # Current prompt uses: hand_caption v1, object_shape v2, interaction_type v2, hand_pose_description v1
 

@@ -19,11 +19,11 @@ def format_prompt(text, remove_pose_desc=True, remove_intention=False, remove_ta
     """Format caption text into a summarization prompt."""
     cleaned_text = text
     if remove_pose_desc:
-        cleaned_text = re.sub(r"^8\. hand_pose_description:.*(?:\n|$)", "", cleaned_text, flags=re.MULTILINE)
+        cleaned_text = re.sub(r"^(?:\d+\.\s*)?hand_pose_description:.*(?:\n|$)", "", cleaned_text, flags=re.MULTILINE)
     if remove_intention:
-        cleaned_text = re.sub(r"^6\. intention:.*(?:\n|$)", "", cleaned_text, flags=re.MULTILINE)
+        cleaned_text = re.sub(r"^(?:\d+\.\s*)?intention:.*(?:\n|$)", "", cleaned_text, flags=re.MULTILINE)
     if remove_taxonomy:
-        cleaned_text = re.sub(r"^7\. grasp_taxonomy:.*(?:\n|$)", "", cleaned_text, flags=re.MULTILINE)
+        cleaned_text = re.sub(r"^(?:\d+\.\s*)?grasp_taxonomy:.*(?:\n|$)", "", cleaned_text, flags=re.MULTILINE)
 
     if remove_taxonomy:
         instruction = (
@@ -93,43 +93,63 @@ def process_files(gpu_id, file_list, args):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+    tokenizer.padding_side = "left"
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name, device_map="auto", torch_dtype="auto"
     ).eval()
+    model.config.pad_token_id = tokenizer.pad_token_id
 
-    for path in tqdm(file_list, desc=f"GPU {gpu_id}"):
-        save_path = path.replace(args.caption_subdir, args.summary_subdir)
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    bs = max(1, int(args.batch_size))
+    for i in tqdm(range(0, len(file_list), bs), desc=f"GPU {gpu_id}"):
+        chunk = file_list[i:i + bs]
+        prompts = []
+        out_paths = []
 
-        if args.skip_existing and os.path.exists(save_path):
+        for path in chunk:
+            save_path = path.replace(args.caption_subdir, args.summary_subdir)
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+            with open(path, "r") as f:
+                caption = f.read().strip()
+            if not caption:
+                continue
+
+            prompt = format_prompt(
+                caption,
+                remove_pose_desc=args.remove_pose_desc,
+                remove_intention=args.remove_intention,
+                remove_taxonomy=args.remove_taxonomy,
+            )
+            prompts.append(prompt)
+            out_paths.append(path)
+
+        if not prompts:
             continue
 
-        with open(path, "r") as f:
-            caption = f.read().strip()
-        if not caption:
-            continue
-
-        prompt = format_prompt(
-            caption,
-            remove_pose_desc=args.remove_pose_desc,
-            remove_intention=args.remove_intention,
-            remove_taxonomy=args.remove_taxonomy,
-        )
-        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+        inputs = tokenizer(
+            prompts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+        ).to(model.device)
         outputs = model.generate(
             **inputs, max_new_tokens=150, do_sample=False, temperature=0.7, top_p=0.95
         )
-        summary = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        summary_text = summary.split("### Response:")[-1].strip()
+        summaries = tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
-        with open(save_path, "w") as f:
-            f.write(summary_text)
+        for src_path, summary in zip(out_paths, summaries):
+            summary_text = summary.split("### Response:")[-1].strip()
+            save_path = src_path.replace(args.caption_subdir, args.summary_subdir)
+            with open(save_path, "w") as f:
+                f.write(summary_text)
 
-        if args.visualize:
-            img_path = path.replace("text", "vis").replace(".txt", ".jpg")
-            if os.path.exists(img_path):
-                vis_save_path = img_path.replace(".jpg", "_with_summary.png")
-                draw_summary_on_image(img_path, summary_text, vis_save_path)
+            if args.visualize:
+                img_path = src_path.replace("text", "vis").replace(".txt", ".jpg")
+                if os.path.exists(img_path):
+                    vis_save_path = img_path.replace(".jpg", "_with_summary.png")
+                    draw_summary_on_image(img_path, summary_text, vis_save_path)
 
 
 def main():
@@ -140,6 +160,7 @@ def main():
     parser.add_argument("--summary-subdir", default="summary",
                         help="Subdirectory name for output summaries")
     parser.add_argument("--model-name", default=DEFAULT_SUMMARY_MODEL)
+    parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument("--visualize", action="store_true",
                         help="Also render summaries on images")
@@ -156,12 +177,22 @@ def main():
         print("No GPUs available.")
         return
 
-    txt_files = glob(os.path.join(args.caption_root, args.caption_subdir, "**/*.txt"), recursive=True)
+    txt_files = glob(os.path.join(args.caption_root, "**", args.caption_subdir, "*.txt"), recursive=True)
     txt_files = [f for f in txt_files if os.path.isfile(f)]
-    print(f"Found {len(txt_files)} caption files across {len(gpu_ids)} GPUs")
 
-    chunk_size = (len(txt_files) + len(gpu_ids) - 1) // len(gpu_ids)
-    chunks = [txt_files[i * chunk_size:(i + 1) * chunk_size] for i in range(len(gpu_ids))]
+    # Pre-filter completed items so remaining work is distributed evenly
+    if args.skip_existing:
+        remaining = [f for f in txt_files if not os.path.exists(f.replace(args.caption_subdir, args.summary_subdir))]
+        n_skipped = len(txt_files) - len(remaining)
+        if n_skipped > 0:
+            print(f"{n_skipped}/{len(txt_files)} already done, {len(remaining)} remaining")
+    else:
+        remaining = txt_files
+
+    print(f"Processing {len(remaining)} caption files across {len(gpu_ids)} GPUs")
+
+    chunk_size = (len(remaining) + len(gpu_ids) - 1) // len(gpu_ids)
+    chunks = [remaining[i * chunk_size:(i + 1) * chunk_size] for i in range(len(gpu_ids))]
 
     processes = []
     for proc_id, gpu_id in enumerate(gpu_ids):
